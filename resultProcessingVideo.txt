@@ -1,0 +1,142 @@
+from System import *
+from System.Collections.Generic import *
+from System.IO import *
+from System.Net import *
+from System.Text import *
+from System.Globalization import *
+import os
+
+
+#get comparison results from AM context
+matchOffsetArray = automotoContext.Variables.GetRunTimeArray("comparison")
+resultArrayLength = matchOffsetArray.Length
+
+
+#get thresholds from AM varaibles
+corruptedTotallyThreshold = get("$corruptedTotallyThreshold").value
+corruptedTotallyThreshold = int(corruptedTotallyThreshold)
+
+longestCorruptedSequenceThreshold = get("$longestCorruptedSequenceThreshold").value
+longestCorruptedSequenceThreshold = int(longestCorruptedSequenceThreshold)
+
+corruptedSequenceNumberThreshold = get("$corruptedSequenceNumberThreshold").value
+corruptedSequenceNumberThreshold = int(corruptedSequenceNumberThreshold)
+
+longestFreezeThreshold = get("$longestFreezeThreshold").value
+longestFreezeThreshold = int (longestFreezeThreshold)
+
+freezeNumberThreshold = get("$freezeNumberThreshold").value
+freezeNumberThreshold = int (freezeNumberThreshold)
+
+blackScreensNumberThreshold = get("$blackScreensNumberThreshold").value
+blackScreensNumberThreshold = int(blackScreensNumberThreshold)
+
+freezeNumber = 0
+freezeLength = 0 
+freezes = []
+longestFreeze = 0
+
+corrupted = []
+corruptedSequenceNumber = 0
+corruptedSequenceLength = 0
+longestCorruptedSequence = 0
+corruptedTotally = 0
+
+blackScreensNumber = 0
+
+testResult = "Passed"
+
+def GetStringByIndex (array,index):
+	return array.GetValueByIndex(index).StringValue
+
+
+
+for i in range (0, resultArrayLength):
+	currentResult = GetStringByIndex(matchOffsetArray, i)
+	
+	#if current frame is repeated
+	if (currentResult == "Repeated"):
+		#if we are not in the middle of repeated frames sequence
+		if (freezeLength == 0):
+			#i.e, if the new freeze has been detected, increase the number of detected freezes
+			freezeNumber = freezeNumber + 1
+		#increase freeze length by 1 frame
+		freezeLength = freezeLength + 1
+		
+		#if this is the very last result in the array
+		if (i == resultArrayLength - 1):
+			if (freezeLength > 0):
+				freezes.insert(freezeNumber, freezeLength)
+			if (freezeLength > longestFreeze):
+				longestFreeze = freezeLength
+		
+		#if a sequence of corrupted frames is interrupted with a Repeated frame, put the corrupted sequence results into the array
+		if (corruptedSequenceLength > 0):
+			corrupted.insert(corruptedSequenceNumber, corruptedSequenceLength)
+			if (corruptedSequenceLength > longestCorruptedSequence):
+				longestCorruptedSequence = corruptedSequenceLength
+			corruptedSequenceLength = 0
+		
+	#if current frame is NOT repeated	
+	else:
+	
+		if (freezeLength > 0):
+			#and if current sequence of repeated frame has been interrupted, put current pair freezeNumber-freezeLength into an array
+			freezes.insert(freezeNumber, freezeLength)
+			if (freezeLength > longestFreeze):
+				longestFreeze = freezeLength
+			freezeLength = 0
+		
+		#if current frame is Not Found, i.e., significantly corrupted
+		if (currentResult == "Not Found"):
+			#increase the total number of corrupted frames
+			corruptedTotally = corruptedTotally + 1
+			
+			#if we are not in the middle of a sequence of corrupted frames
+			if (corruptedSequenceLength == 0):
+				#increment the corrupted sequnce counter
+				corruptedSequenceNumber = corruptedSequenceNumber + 1
+			#increment corrupted sequence length	
+			corruptedSequenceLength = corruptedSequenceLength + 1
+			
+			#if this is the very last result in the array
+			if (i == resultArrayLength - 1):
+				if (corruptedSequenceLength > 0):
+					corrupted.insert(corruptedSequenceNumber, corruptedSequenceLength)
+				if (corruptedSequenceLength > longestCorruptedSequence):
+					longestCorruptedSequence = corruptedSequenceLength
+		
+		#if current frame is NOT not found
+		else:
+			#if a sequence of corrupted frames is interrupted with other result, put the corrupted sequence results into the array
+			if (corruptedSequenceLength > 0):
+				corrupted.insert(corruptedSequenceNumber, corruptedSequenceLength)
+				if (corruptedSequenceLength > longestCorruptedSequence):
+					longestCorruptedSequence = corruptedSequenceLength
+				corruptedSequenceLength = 0
+			
+			#if current frame is Black screen, increase the total number of detected black screens			
+			if (currentResult == "Black Screen"):
+				blackScreensNumber = blackScreensNumber + 1
+
+
+if (corruptedTotally >= corruptedTotallyThreshold):
+	testResult = "Failed"
+
+if(longestCorruptedSequence >= longestCorruptedSequenceThreshold):
+	testResult = "Failed"
+	
+if (corruptedSequenceNumber >= corruptedSequenceNumberThreshold):
+	testResult = "Failed"
+
+if (longestFreeze >= longestFreezeThreshold):
+	testResult = "Failed"
+	
+if (freezeNumber >= freezeNumberThreshold):
+	testResult = "Failed"
+
+if (blackScreensNumber >= blackScreensNumberThreshold):
+	testResult = "Failed"
+
+output_list = freezes, corrupted, corruptedTotally, longestFreeze, testResult, longestCorruptedSequence, corruptedSequenceNumber, freezeNumber, blackScreensNumber
+	

@@ -1,0 +1,38 @@
+from System import *
+from System.Collections.Generic import *
+from System.IO import *
+from System.Net import *
+from System.Text import *
+from System.Globalization import *
+import os
+
+
+path = automotoContext.Variables.GetVarValue("pathToFiles").StringValue
+filename = automotoContext.Variables.GetVarValue("filenamesTemplate").StringValue
+
+path_temp = path.replace("\\", "").replace("\"", "")
+
+
+#substring = filename.replace("\\\\", "\\").replace(path, "").replace("%d.bmp", "").replace("\"", "").replace("\\", "")
+substring = filename.replace("\\", "").replace(path_temp, "").replace("%d.bmp", "").replace("\"", "")
+
+print 'substring: ' + str(substring)
+
+list_dir = []
+list_dir = os.listdir(path)
+#print list_dir
+
+for i in range (0, len(list_dir)):
+	print list_dir[i]
+	if (list_dir[i].find(substring) != -1):
+		if(list_dir[i].find('.avi') == -1) or (list_dir[i].find('.mpg') == -1) or (list_dir[i].find('.ts') == -1) or (list_dir[i].find('.trp') == -1):
+			candidateForDeletion = path + '\\' + str(list_dir[i])
+			candidateForDeletion = candidateForDeletion.replace('\\', '/')
+			print 'candidateForDeletion: ' + str(candidateForDeletion)
+			try:
+				os.remove(candidateForDeletion)
+			except:
+				print 'exception thrown'
+			else:
+				print 'deleted'
+	
